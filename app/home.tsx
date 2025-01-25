@@ -6,6 +6,7 @@ import {
   TextInput,
   Button,
   TouchableOpacity,
+  ProgressBarAndroidBase,
 } from 'react-native';
 import { Modal } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -16,6 +17,7 @@ import { Link } from 'expo-router';
 import Onglet from './onglet';
 import colors from './colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Progress from 'react-native-progress';
 
 export default function Home() {
   const [showGraph, setShowGraph] = useState(false);
@@ -27,6 +29,22 @@ export default function Home() {
   const [montant, setMontant] = useState<number>(0);
   const [typeDepense, setTypeDepense] = useState<string>('');
   const [depenses, setDepenses] = useState<Depense[]>([]);
+  const [previsonOpen, setPrevisionOpen] = useState(true);
+
+  // depenses réelles
+
+  const [totalDepenseReelle, setTotalDepenseReelle] = useState(0);
+  const [depensesReelles, setDepensesReelles] = useState<Depense[]>([]);
+  const [modalDepReelle, setModalDepReelle] = useState(false);
+
+  //Details
+
+  const [modalDetails, setModalDetails] = useState(false);
+  const [selectedKey, setSelectedKey] = useState(null);
+
+  //Historique
+
+  const [modalHisto, setModalHisto] = useState(false);
 
   interface Depense {
     id: number;
@@ -43,6 +61,10 @@ export default function Home() {
     try {
       await AsyncStorage.setItem('revenu', JSON.stringify(revenu));
       await AsyncStorage.setItem('depenses', JSON.stringify(depenses));
+      await AsyncStorage.setItem(
+        'depensesReelles',
+        JSON.stringify(depensesReelles)
+      );
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des données', error);
     }
@@ -53,23 +75,25 @@ export default function Home() {
     try {
       const savedRevenu = await AsyncStorage.getItem('revenu');
       const savedDepenses = await AsyncStorage.getItem('depenses');
+      const savedDepensesReelles =
+        await AsyncStorage.getItem('depensesReelles');
 
       if (savedRevenu) setRevenu(JSON.parse(savedRevenu));
       if (savedDepenses) setDepenses(JSON.parse(savedDepenses));
+      if (savedDepensesReelles)
+        setDepensesReelles(JSON.parse(savedDepensesReelles));
     } catch (error) {
       console.error('Erreur lors du chargement des données', error);
     }
   };
 
   useEffect(() => {
-    console.log('Chargement initial :', revenu, depenses);
     loadData();
   }, []);
 
   useEffect(() => {
-    console.log('Sauvegarde déclenchée :', revenu, depenses);
     saveData();
-  }, [revenu, depenses]);
+  }, [revenu, depenses, depensesReelles]);
 
   useEffect(() => {
     const sum = depenses
@@ -84,16 +108,46 @@ export default function Home() {
     );
   };
 
+  const handleDelete2 = (id: number) => {
+    setDepensesReelles((prevDepenses) =>
+      prevDepenses.filter((depense) => depense.id !== id)
+    );
+  };
+
   const handleValidation = () => {
-    setIsLocked(!isLocked);
+    if (revenu >= 0) {
+      setIsLocked(!isLocked);
+    } else {
+      setRevenu(0);
+      setIsLocked(!isLocked);
+    }
   };
 
   const handleReset = () => {
     setIsLocked(!isLocked);
   };
 
+  const handleDeleteData = () => {
+    setDepensesReelles([]);
+  };
+
   const toggleModal = () => {
     setModalVisible(!isModalVisible);
+  };
+
+  const toggleReelle = () => {
+    setModalDepReelle(!modalDepReelle);
+  };
+
+  const toggleDetails = (selectedKey) => {
+    if (
+      depensesReelles.filter((depR) => depR.typeDepense === selectedKey)
+        .length == 0
+    ) {
+      setModalDetails(false);
+    } else {
+      setModalDetails(!modalDetails);
+    }
   };
 
   const ajouterDepense = () => {
@@ -121,6 +175,85 @@ export default function Home() {
     setTotalDepense(sum);
   }, [depenses]);
 
+  useEffect(() => {
+    const sumReelle = depensesReelles
+      .map((depense) => Number(depense.montant))
+      .reduce((a, b) => a + b, 0);
+    setTotalDepenseReelle(sumReelle);
+  }, [depensesReelles]);
+
+  const calculerTotauxParType = () => {
+    const totaux = depensesReelles.reduce(
+      (acc, depense) => {
+        const { typeDepense, montant } = depense;
+
+        if (!acc[typeDepense]) {
+          acc[typeDepense] = 0; // Initialise le total pour ce type de dépense
+        }
+
+        acc[typeDepense] += montant; // Ajoute le montant à ce type
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return totaux;
+  };
+
+  let totauxParType = calculerTotauxParType();
+
+  const calculerTotauxParTypePrev = () => {
+    const totaux = depenses.reduce(
+      (acc, depense) => {
+        const { typeDepense, montant } = depense;
+
+        if (!acc[typeDepense]) {
+          acc[typeDepense] = 0; // Initialise le total pour ce type de dépense
+        }
+
+        acc[typeDepense] += montant; // Ajoute le montant à ce type
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return totaux;
+  };
+
+  let totauxParTypePrev = calculerTotauxParTypePrev();
+
+  const ajouterDepenseReelle = () => {
+    if (titre.length > 0 && montant > 0 && typeDepense.length > 0) {
+      const nouvelleDepenseReelle: Depense = {
+        id: Date.now(),
+        titre,
+        montant: Number(montant),
+        typeDepense,
+      };
+      if (!totauxParTypePrev[typeDepense]) {
+        const nouvelleDepense: Depense = {
+          id: Date.now(),
+          titre: '(Imprévu)',
+          montant: Number(0),
+          typeDepense: typeDepense,
+        };
+        setDepenses([nouvelleDepense, ...depenses]);
+        setTitre('');
+        setMontant(0);
+        setTypeDepense('');
+      }
+
+      setDepensesReelles([nouvelleDepenseReelle, ...depensesReelles]);
+
+      setTitre('');
+      setMontant(0);
+      setTypeDepense('');
+      setModalDepReelle(!modalDepReelle);
+    } else {
+      alert('Tous les champs doivent être remplis');
+    }
+  };
+
   return isLocked ? (
     <ImageBackground source={bgImage} style={styles.secondPage}>
       <Text style={styles.texte}>Ajoutez vos revenus mensuels</Text>
@@ -140,58 +273,302 @@ export default function Home() {
     </ImageBackground>
   ) : (
     <View style={styles.homePage}>
-      <Button
-        color={colors.buttonPrimary}
-        title="Modifier le revenu"
-        onPress={handleReset}
-      />
-      <ImageBackground source={headerImage} style={styles.divHeader}>
-        <View style={styles.head}>
-          <View style={styles.divRevenu}>
-            <Text style={{ color: colors.textSecondary }}>Vos revenus</Text>
-            <Text style={styles.texteRevenu}>{revenu}€</Text>
+      <TouchableOpacity
+        onPress={previsonOpen ? handleReset : handleDeleteData}
+        style={styles.btnModif}
+      >
+        {/* ? handleReset() : */}
+        <Text style={styles.textModif}>
+          {previsonOpen ? 'Modifier le revenu' : 'Effacer toutes les dépenses'}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={styles.navContainerButton}>
+        <TouchableOpacity
+          style={[styles.buttonNav, previsonOpen && styles.buttonNavAct]}
+          onPress={() => {
+            setPrevisionOpen(true);
+          }}
+        >
+          <Text style={[styles.textNav, previsonOpen && styles.textNavAct]}>
+            Prévision
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.buttonNav, !previsonOpen && styles.buttonNavAct]}
+          onPress={() => setPrevisionOpen(false)}
+        >
+          <Text style={[styles.textNav, !previsonOpen && styles.textNavAct]}>
+            Dépenses réélles
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {previsonOpen ? (
+        <View>
+          <ImageBackground source={headerImage} style={styles.divHeader}>
+            <View style={styles.head}>
+              <View style={styles.divRevenu}>
+                <Text style={{ color: colors.textSecondary }}>Vos revenus</Text>
+                <Text style={styles.texteRevenu}>{revenu}€</Text>
+              </View>
+            </View>
+            <View style={styles.totaux}>
+              <View style={styles.divNombre}>
+                <Text style={styles.texteTotaux}>Vos prévisions</Text>
+                <Text style={styles.texteNbTotaux}>
+                  {totalDepense >= 1000000
+                    ? `${(totalDepense / 1000000).toFixed(2)}M`
+                    : totalDepense.toFixed(0)}
+                  €
+                </Text>
+              </View>
+              <View style={styles.divNombre}>
+                <Text style={styles.texteTotaux}>Montant disponible</Text>
+                <Text
+                  style={[
+                    styles.texteNbTotaux,
+                    {
+                      color:
+                        revenu - totalDepense < 0
+                          ? colors.depense
+                          : styles.texteNbTotaux.color,
+                    },
+                  ]}
+                >
+                  {revenu - totalDepense >= 1000000
+                    ? `${((revenu - totalDepense) / 1000000).toFixed(2)}M`
+                    : (revenu - totalDepense).toFixed(0)}
+                  €
+                </Text>
+              </View>
+            </View>
+            <View style={styles.navigation}>
+              <View style={styles.button}>
+                <TouchableOpacity onPress={() => setShowGraph(!showGraph)}>
+                  <Text style={styles.buttonText}>
+                    Répartition des dépenses
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.button}>
+                <TouchableOpacity onPress={toggleModal}>
+                  <Text style={styles.buttonText}>Ajouter une prévision</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.button}>
+                <Link style={styles.buttonText} href="/ecoPage">
+                  Economisez de l'argent
+                </Link>
+              </View>
+            </View>
+          </ImageBackground>
+          <View style={styles.cardsContainer}>
+            {depenses.length > 0 ? (
+              <FlatList
+                data={depenses}
+                renderItem={({ item }) => {
+                  return (
+                    <View style={styles.card}>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(item.id)}
+                        style={styles.deleteButton}
+                      >
+                        <Text style={styles.X}>X</Text>
+                      </TouchableOpacity>
+                      <View style={styles.contentCard}>
+                        <View style={styles.headerCard}>
+                          <Text style={styles.cardTxt}>{item.titre}</Text>
+                          <Text style={styles.cardTxt}>{item.montant}€</Text>
+                        </View>
+                        <Text style={styles.cardTxtType}>
+                          {item.typeDepense}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                }}
+                keyExtractor={(item) => item.id.toString()}
+              />
+            ) : (
+              <View>
+                <Text style={{ textAlign: 'center' }}>
+                  Aucune dépense renseignée
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-        <View style={styles.totaux}>
-          <View style={styles.divNombre}>
-            <Text style={styles.texteTotaux}>Dépenses </Text>
-            <Text style={styles.texteNbTotaux}>{totalDepense}€</Text>
-          </View>
-          <View style={styles.divNombre}>
-            <Text style={styles.texteTotaux}>Reste </Text>
-            <Text
-              style={[
-                styles.texteNbTotaux,
-                {
-                  color:
-                    revenu - totalDepense < 0
-                      ? colors.depense
-                      : styles.texteNbTotaux.color,
-                },
-              ]}
-            >
-              {revenu - totalDepense}€
-            </Text>
+      ) : (
+        //  ********************** PAGE DEPENSES REELLES **********************
+        <View>
+          <ImageBackground source={headerImage} style={styles.divHeader}>
+            <View style={styles.head}>
+              <View style={styles.divRevenu}>
+                <Text style={{ color: colors.textSecondary }}>
+                  Vos prévisions
+                </Text>
+                <Text style={styles.texteRevenu}>{totalDepense}€</Text>
+              </View>
+            </View>
+            <View style={styles.totaux}>
+              <View style={styles.divNombre}>
+                <Text style={styles.texteTotaux}>Déjà dépensé</Text>
+                <Text style={styles.texteNbTotaux}>
+                  {totalDepenseReelle >= 1000000
+                    ? `${(totalDepenseReelle / 1000000).toFixed(2)}M`
+                    : totalDepenseReelle.toFixed(0)}
+                  €
+                </Text>
+              </View>
+              <View style={styles.divNombre}>
+                <Text style={styles.texteTotaux}>Reste à dépenser </Text>
+                <Text
+                  style={[
+                    styles.texteNbTotaux,
+                    {
+                      color:
+                        totalDepense - totalDepenseReelle < 0
+                          ? colors.depense
+                          : styles.texteNbTotaux.color,
+                    },
+                  ]}
+                >
+                  {totalDepense - totalDepenseReelle >= 1000000
+                    ? `${((totalDepense - totalDepenseReelle) / 1000000).toFixed(2)}M`
+                    : (totalDepense - totalDepenseReelle).toFixed(0)}
+                  €
+                </Text>
+              </View>
+            </View>
+            <View style={styles.navigation}>
+              {/* <View style={styles.button}>
+                <TouchableOpacity onPress={() => toggleHisto()}>
+                  <Text style={styles.buttonText}>Historique</Text>
+                </TouchableOpacity>
+              </View> */}
+              <View style={styles.button}>
+                <TouchableOpacity onPress={toggleReelle}>
+                  <Text style={styles.buttonText}>Ajouter une dépense</Text>
+                </TouchableOpacity>
+              </View>
+              {/* <View style={styles.button}>
+                <Link style={styles.buttonText} href="/ecoPage">
+                  Autre
+                </Link>
+              </View> */}
+            </View>
+          </ImageBackground>
+          <View style={styles.cardsContainer}>
+            {depenses.length > 0 ? (
+              <View>
+                {Object.entries(totauxParTypePrev).map(([key, value]) => (
+                  <View key={key} style={styles.card}>
+                    <TouchableOpacity
+                      style={styles.contentCard}
+                      onPress={() => {
+                        setSelectedKey(key);
+                        toggleDetails(key);
+                      }}
+                    >
+                      <Text style={styles.cardTxtType}>{key}</Text>
+
+                      <View
+                        style={[
+                          styles.headerCard,
+                          { justifyContent: 'flex-start' },
+                        ]}
+                      >
+                        <Text style={styles.cardTxt}>
+                          {!totauxParType[key] ? 0 : totauxParType[key]}€
+                        </Text>
+                        <View style={styles.progressBarView}>
+                          <Progress.Bar
+                            progress={
+                              !totauxParType[key]
+                                ? 0
+                                : (totauxParType[key] * 100) /
+                                  totauxParTypePrev[key] /
+                                  100
+                            }
+                            width={200}
+                            height={10}
+                          />
+                        </View>
+                        <Text style={styles.cardTxt}>
+                          {totauxParTypePrev[key]}€
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* ******************* MODALE DETAILS ***************** */}
+                    <View>
+                      <Modal
+                        visible={modalDetails}
+                        transparent={true}
+                        animationType="slide"
+                      >
+                        <View style={[styles.cardsContainer, { flex: 1 }]}>
+                          <Text style={styles.cardTxtType}>
+                            {' '}
+                            {selectedKey}{' '}
+                          </Text>
+                          {depensesReelles
+                            .filter((depR) => depR.typeDepense === selectedKey)
+                            .map((depR) => (
+                              <View style={styles.card} key={depR.id}>
+                                <TouchableOpacity
+                                  onPress={() => handleDelete2(depR.id)}
+                                  style={styles.deleteButton}
+                                >
+                                  <Text style={styles.X}>X</Text>
+                                </TouchableOpacity>
+
+                                <View style={styles.contentCard}>
+                                  <View style={styles.headerCard}>
+                                    <Text style={styles.cardTxt}>
+                                      {depR.titre}
+                                    </Text>
+
+                                    <Text style={styles.cardTxt}>
+                                      {depR.montant}€
+                                    </Text>
+                                    <Text style={styles.cardTxt}>
+                                      {new Date(depR.id).toLocaleString(
+                                        'fr-FR',
+                                        {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                        }
+                                      )}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            ))}
+                        </View>
+
+                        <Button
+                          color={colors.depense}
+                          title="Annuler"
+                          onPress={() => setModalDetails(!modalDetails)}
+                        />
+                      </Modal>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View>
+                <Text style={{ textAlign: 'center' }}>
+                  Aucune dépense renseignée
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-        <View style={styles.navigation}>
-          <View style={styles.button}>
-            <TouchableOpacity onPress={() => setShowGraph(!showGraph)}>
-              <Text style={styles.buttonText}>Répartition des dépenses</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.button}>
-            <TouchableOpacity onPress={toggleModal}>
-              <Text style={styles.buttonText}>Ajouter une dépense</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.button}>
-            <Link style={styles.buttonText} href="/ecoPage">
-              Economisez de l'argent
-            </Link>
-          </View>
-        </View>
-      </ImageBackground>
+      )}
+
       <View>
         {showGraph ? (
           <View>
@@ -212,34 +589,27 @@ export default function Home() {
           transparent={true}
           animationType="slide"
         >
-          <View
-            style={{
-              marginHorizontal: 15,
-              marginVertical: 250,
-              padding: 20,
-              backgroundColor: colors.textSecondary,
-              borderRadius: 10,
-            }}
-          >
-            <Text>Nouvelle dépense</Text>
+          <View style={styles.modal}>
+            <Text style={styles.titleModal}>Nouvelle prévision</Text>
             <TextInput
               placeholder="Titre"
               value={titre}
               onChangeText={(text) => setTitre(text)}
-              style={{ borderBottomWidth: 1, marginBottom: 10 }}
+              style={styles.inputModal}
             />
             <TextInput
               placeholder="Montant"
               keyboardType="numeric"
               value={montant}
               onChangeText={(text) => setMontant(text)}
-              style={{ borderBottomWidth: 1, marginBottom: 10 }}
+              style={styles.inputModal}
             />
 
             <Text>Type de dépense</Text>
             <Picker
               selectedValue={typeDepense}
               onValueChange={(itemValue) => setTypeDepense(itemValue)}
+              style={styles.picker}
             >
               <Picker.Item label="Sélectionner..." value="" />
               <Picker.Item label="Loyer" value="Loyer" />
@@ -275,39 +645,72 @@ export default function Home() {
             </View>
           </View>
         </Modal>
-        <View style={styles.cardsContainer}>
-          {depenses.length > 0 ? (
-            <FlatList
-              data={depenses}
-              renderItem={({ item }) => {
-                return (
-                  <View style={styles.card}>
-                    <TouchableOpacity
-                      onPress={() => handleDelete(item.id)}
-                      style={styles.deleteButton}
-                    >
-                      <Text style={styles.X}>X</Text>
-                    </TouchableOpacity>
-                    <View style={styles.contentCard}>
-                      <View style={styles.headerCard}>
-                        <Text style={styles.cardTxt}>{item.titre}</Text>
-                        <Text style={styles.cardTxt}>{item.montant}€</Text>
-                      </View>
-                      <Text style={styles.cardTxtType}>{item.typeDepense}</Text>
-                    </View>
-                  </View>
-                );
-              }}
-              keyExtractor={(item) => item.id.toString()}
+      </View>
+
+      {/* DEPENSES REELLES */}
+
+      <View style={styles.divModalPlusContenair}>
+        <Modal
+          visible={modalDepReelle}
+          transparent={true}
+          animationType="slide"
+        >
+          <View style={styles.modal}>
+            <Text style={styles.titleModal}>Nouvelle dépense</Text>
+            <TextInput
+              placeholder="Titre"
+              value={titre}
+              onChangeText={(text) => setTitre(text)}
+              style={styles.inputModal}
             />
-          ) : (
-            <View>
-              <Text style={{ textAlign: 'center' }}>
-                Aucune dépense renseignée
-              </Text>
+            <TextInput
+              placeholder="Montant"
+              keyboardType="numeric"
+              value={montant}
+              onChangeText={(text) => setMontant(text)}
+              style={styles.inputModal}
+            />
+
+            <Text>Type de dépense</Text>
+            <Picker
+              selectedValue={typeDepense}
+              onValueChange={(itemValue) => setTypeDepense(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Sélectionner..." value="" />
+              <Picker.Item label="Loyer" value="Loyer" />
+              <Picker.Item label="Alimentation" value="Alimentation" />
+              <Picker.Item label="Transport" value="Transport" />
+              <Picker.Item label="Loisirs" value="Loisirs" />
+              <Picker.Item label="Santé" value="Sante" />
+              <Picker.Item label="Éducation" value="Education" />
+              <Picker.Item label="Famille" value="Famille" />
+              <Picker.Item label="Animaux" value="Animaux" />
+              <Picker.Item label="Investissements" value="Investissements" />
+              <Picker.Item label="Voyages" value="Voyages" />
+              <Picker.Item label="Vétements" value="Vetements" />
+              <Picker.Item label="Impôts" value="Impots" />
+              <Picker.Item label="Services" value="Services" />
+              <Picker.Item label="Dons" value="Dons" />
+              <Picker.Item label="Epargne" value="Epargne" />
+              <Picker.Item label="Culture" value="Culture" />
+              <Picker.Item label="Communication" value="Communication" />
+              <Picker.Item label="Autre" value="Autre" />
+            </Picker>
+            <View style={styles.divButtonModal}>
+              <Button
+                color={colors.buttonPrimary}
+                title="Ajouter"
+                onPress={ajouterDepenseReelle}
+              />
+              <Button
+                color={colors.depense}
+                title="Annuler"
+                onPress={() => setModalDepReelle(!modalDepReelle)}
+              />
             </View>
-          )}
-        </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );
@@ -323,6 +726,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  progressBarView: {
+    height: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   texte: {
     fontSize: 22,
     marginTop: 20,
@@ -333,8 +741,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   homePage: {
-    paddingTop: 55,
-    backgroundColor: colors.background,
+    marginTop: 0,
     flex: 1,
   },
   divHeader: {
@@ -456,6 +863,8 @@ const styles = StyleSheet.create({
   headerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 20,
     paddingRight: 50,
   },
   contentCard: {
@@ -466,7 +875,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardsContainer: {
-    flex: 1,
     paddingVertical: 20,
     backgroundColor: colors.bgfoot,
     zIndex: 10,
@@ -482,8 +890,10 @@ const styles = StyleSheet.create({
   textButtonGeneric: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 20,
     textAlign: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
   },
   input: {
     width: '80%',
@@ -500,5 +910,78 @@ const styles = StyleSheet.create({
   },
   divButtonModal: {
     gap: 15,
+    marginTop: 20,
+  },
+
+  // Navigation
+
+  btnModif: {
+    backgroundColor: colors.buttonPrimary,
+    alignItems: 'center',
+    padding: 10,
+  },
+
+  navContainerButton: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  buttonNav: {
+    backgroundColor: colors.buttonSecondary,
+    padding: 20,
+    width: '50%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'grey',
+  },
+  buttonNavAct: {
+    backgroundColor: colors.buttonActivated,
+    padding: 20,
+    width: '50%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'black',
+  },
+  textNav: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  textNavAct: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  textModif: {
+    fontSize: 16,
+  },
+  modal: {
+    marginHorizontal: 15,
+    marginVertical: 250,
+    padding: 20,
+    borderWidth: 5,
+    borderColor: 'orange',
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
+  titleModal: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: colors.buttonPrimary,
+  },
+  inputModal: {
+    marginTop: 10,
+    borderBottomWidth: 1,
+    marginBottom: 10,
+  },
+  picker: {
+    height: 60,
+    backgroundColor: '#e3e3e3',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginTop: 8,
+    marginBottom: 10,
   },
 });

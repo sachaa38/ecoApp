@@ -11,6 +11,7 @@ export default {
   // Boutons et icônes
   buttonPrimary: '#00687F', // Boutons principaux (bleu pétrole)
   buttonSecondary: '#C0C0C0', // Boutons secondaires (argent)
+  buttonActivated: 'orange',
 
   // Cards
   cardBackground: '#AED6F1', // Background des cards

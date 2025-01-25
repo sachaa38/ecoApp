@@ -39,7 +39,9 @@ const styles = StyleSheet.create({
   desc: {
     textAlign: 'center',
     marginTop: -20,
-    color: colors.textSecondary,
+    color: 'white',
+    fontSize: 16,
+    paddingHorizontal: 5,
   },
   button: {
     backgroundColor: colors.buttonPrimary,
