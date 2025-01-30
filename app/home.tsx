@@ -7,6 +7,7 @@ import {
   Button,
   TouchableOpacity,
   ProgressBarAndroidBase,
+  ScrollView,
 } from 'react-native';
 import { Modal } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -44,7 +45,7 @@ export default function Home() {
 
   //Historique
 
-  const [modalHisto, setModalHisto] = useState(false);
+  const [modalAlert, setModalAlert] = useState(false);
 
   interface Depense {
     id: number;
@@ -129,6 +130,11 @@ export default function Home() {
 
   const handleDeleteData = () => {
     setDepensesReelles([]);
+    setModalAlert(!modalAlert);
+  };
+
+  const toggleAlert = () => {
+    setModalAlert(!modalAlert);
   };
 
   const toggleModal = () => {
@@ -250,486 +256,625 @@ export default function Home() {
       setTypeDepense('');
       setModalDepReelle(!modalDepReelle);
     } else {
-      alert('Tous les champs doivent être remplis');
+      alert(
+        'Tous les champs doivent être remplis. Pour les chiffres à virgule, utilisez le point.'
+      );
     }
   };
 
   return isLocked ? (
-    <ImageBackground source={bgImage} style={styles.secondPage}>
-      <Text style={styles.texte}>Ajoutez vos revenus mensuels</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Revenus mensuels (€)"
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        value={revenu}
-        onChangeText={(text) => {
-          setRevenu(text);
-        }}
-      />
-      <TouchableOpacity style={styles.buttonGeneric} onPress={handleValidation}>
-        <Text style={styles.textButtonGeneric}>Valider</Text>
-      </TouchableOpacity>
-    </ImageBackground>
-  ) : (
-    <View style={styles.homePage}>
-      <TouchableOpacity
-        onPress={previsonOpen ? handleReset : handleDeleteData}
-        style={styles.btnModif}
-      >
-        {/* ? handleReset() : */}
-        <Text style={styles.textModif}>
-          {previsonOpen ? 'Modifier le revenu' : 'Effacer toutes les dépenses'}
-        </Text>
-      </TouchableOpacity>
-
-      <View style={styles.navContainerButton}>
-        <TouchableOpacity
-          style={[styles.buttonNav, previsonOpen && styles.buttonNavAct]}
-          onPress={() => {
-            setPrevisionOpen(true);
+    <View style={styles.bgFond}>
+      <ImageBackground source={bgImage} style={styles.secondPage}>
+        <Text style={styles.texte}>Ajoutez vos revenus mensuels</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Revenus mensuels (€)"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="numeric"
+          value={revenu}
+          onChangeText={(text) => {
+            setRevenu(text);
           }}
-        >
-          <Text style={[styles.textNav, previsonOpen && styles.textNavAct]}>
-            Prévision
-          </Text>
-        </TouchableOpacity>
+        />
         <TouchableOpacity
-          style={[styles.buttonNav, !previsonOpen && styles.buttonNavAct]}
-          onPress={() => setPrevisionOpen(false)}
+          style={styles.buttonGeneric}
+          onPress={handleValidation}
         >
-          <Text style={[styles.textNav, !previsonOpen && styles.textNavAct]}>
-            Dépenses réélles
+          <Text style={styles.textButtonGeneric}>Valider</Text>
+        </TouchableOpacity>
+      </ImageBackground>
+    </View>
+  ) : (
+    <View style={styles.bgFond}>
+      <View style={styles.homePage}>
+        <TouchableOpacity
+          onPress={previsonOpen ? handleReset : toggleAlert}
+          style={styles.btnModif}
+        >
+          {/* ? handleReset() : */}
+          <Text style={styles.textModif}>
+            {previsonOpen
+              ? 'Modifier le revenu'
+              : 'Effacer toutes les dépenses'}
           </Text>
         </TouchableOpacity>
-      </View>
-      {previsonOpen ? (
-        <View>
-          <ImageBackground source={headerImage} style={styles.divHeader}>
-            <View style={styles.head}>
-              <View style={styles.divRevenu}>
-                <Text style={{ color: colors.textSecondary }}>Vos revenus</Text>
-                <Text style={styles.texteRevenu}>{revenu}€</Text>
-              </View>
-            </View>
-            <View style={styles.totaux}>
-              <View style={styles.divNombre}>
-                <Text style={styles.texteTotaux}>Vos prévisions</Text>
-                <Text style={styles.texteNbTotaux}>
-                  {totalDepense >= 1000000
-                    ? `${(totalDepense / 1000000).toFixed(2)}M`
-                    : totalDepense.toFixed(0)}
-                  €
-                </Text>
-              </View>
-              <View style={styles.divNombre}>
-                <Text style={styles.texteTotaux}>Montant disponible</Text>
-                <Text
-                  style={[
-                    styles.texteNbTotaux,
-                    {
-                      color:
-                        revenu - totalDepense < 0
-                          ? colors.depense
-                          : styles.texteNbTotaux.color,
-                    },
-                  ]}
-                >
-                  {revenu - totalDepense >= 1000000
-                    ? `${((revenu - totalDepense) / 1000000).toFixed(2)}M`
-                    : (revenu - totalDepense).toFixed(0)}
-                  €
-                </Text>
-              </View>
-            </View>
-            <View style={styles.navigation}>
-              <View style={styles.button}>
-                <TouchableOpacity onPress={() => setShowGraph(!showGraph)}>
-                  <Text style={styles.buttonText}>
-                    Répartition des dépenses
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.button}>
-                <TouchableOpacity onPress={toggleModal}>
-                  <Text style={styles.buttonText}>Ajouter une prévision</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.button}>
-                <Link style={styles.buttonText} href="/ecoPage">
-                  Economisez de l'argent
-                </Link>
-              </View>
-            </View>
-          </ImageBackground>
-          <View style={styles.cardsContainer}>
-            {depenses.length > 0 ? (
-              <FlatList
-                data={depenses}
-                renderItem={({ item }) => {
-                  return (
-                    <View style={styles.card}>
-                      <TouchableOpacity
-                        onPress={() => handleDelete(item.id)}
-                        style={styles.deleteButton}
-                      >
-                        <Text style={styles.X}>X</Text>
-                      </TouchableOpacity>
-                      <View style={styles.contentCard}>
-                        <View style={styles.headerCard}>
-                          <Text style={styles.cardTxt}>{item.titre}</Text>
-                          <Text style={styles.cardTxt}>{item.montant}€</Text>
-                        </View>
-                        <Text style={styles.cardTxtType}>
-                          {item.typeDepense}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                }}
-                keyExtractor={(item) => item.id.toString()}
-              />
-            ) : (
-              <View>
-                <Text style={{ textAlign: 'center' }}>
-                  Aucune dépense renseignée
-                </Text>
-              </View>
-            )}
-          </View>
+
+        <View style={styles.navContainerButton}>
+          <TouchableOpacity
+            style={[styles.buttonNav, previsonOpen && styles.buttonNavAct]}
+            onPress={() => {
+              setPrevisionOpen(true);
+            }}
+          >
+            <Text style={[styles.textNav, previsonOpen && styles.textNavAct]}>
+              Prévision
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.buttonNav, !previsonOpen && styles.buttonNavAct]}
+            onPress={() => setPrevisionOpen(false)}
+          >
+            <Text style={[styles.textNav, !previsonOpen && styles.textNavAct]}>
+              Dépenses réélles
+            </Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        //  ********************** PAGE DEPENSES REELLES **********************
-        <View>
-          <ImageBackground source={headerImage} style={styles.divHeader}>
-            <View style={styles.head}>
-              <View style={styles.divRevenu}>
-                <Text style={{ color: colors.textSecondary }}>
-                  Vos prévisions
-                </Text>
-                <Text style={styles.texteRevenu}>{totalDepense}€</Text>
+        {previsonOpen ? (
+          <View style={{ flex: 1 }}>
+            <ImageBackground source={headerImage} style={styles.divHeader}>
+              <View style={styles.head}>
+                <View style={styles.divRevenu}>
+                  <Text style={{ color: colors.textSecondary }}>
+                    Vos revenus
+                  </Text>
+                  <Text style={styles.texteRevenu}>{revenu}€</Text>
+                </View>
               </View>
+              <View style={styles.totaux}>
+                <View style={styles.divNombre}>
+                  <Text style={styles.texteTotaux}>Vos prévisions</Text>
+                  <Text style={styles.texteNbTotaux}>
+                    {totalDepense >= 1000000
+                      ? `${(totalDepense / 1000000).toFixed(2)}M`
+                      : totalDepense.toFixed(2)}
+                    €
+                  </Text>
+                </View>
+                <View style={styles.divNombre}>
+                  <Text style={styles.texteTotaux}>Montant disponible</Text>
+                  <Text
+                    style={[
+                      styles.texteNbTotaux,
+                      {
+                        color:
+                          revenu - totalDepense < 0
+                            ? colors.depense
+                            : styles.texteNbTotaux.color,
+                      },
+                    ]}
+                  >
+                    {revenu - totalDepense >= 1000000
+                      ? `${((revenu - totalDepense) / 1000000).toFixed(2)}M`
+                      : (revenu - totalDepense).toFixed(2)}
+                    €
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.navigation}>
+                <View style={styles.button}>
+                  <TouchableOpacity onPress={() => setShowGraph(!showGraph)}>
+                    <Text style={styles.buttonText}>
+                      Répartition des dépenses
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.button}>
+                  <TouchableOpacity onPress={toggleModal}>
+                    <Text style={styles.buttonText}>Ajouter une prévision</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.button}>
+                  <Link style={styles.buttonText} href="/ecoPage">
+                    Economisez de l'argent
+                  </Link>
+                </View>
+              </View>
+            </ImageBackground>
+            <View style={styles.cardsContainer}>
+              {depenses.length > 0 ? (
+                <FlatList
+                  data={depenses}
+                  renderItem={({ item }) => {
+                    return (
+                      <View style={styles.card}>
+                        <TouchableOpacity
+                          onPress={() => handleDelete(item.id)}
+                          style={styles.deleteButton}
+                        >
+                          <Text style={styles.X}>X</Text>
+                        </TouchableOpacity>
+                        <View style={styles.contentCard}>
+                          <View style={styles.headerCard}>
+                            <Text style={styles.cardTxt}>{item.titre}</Text>
+                            <Text style={styles.cardTxt}>{item.montant}€</Text>
+                          </View>
+                          <Text style={styles.cardTxtType}>
+                            {item.typeDepense}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  }}
+                  keyExtractor={(item) => item.id.toString()}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  style={styles.flatList}
+                />
+              ) : (
+                <View>
+                  <Text style={{ textAlign: 'center' }}>
+                    Aucune dépense renseignée
+                  </Text>
+                </View>
+              )}
             </View>
-            <View style={styles.totaux}>
-              <View style={styles.divNombre}>
-                <Text style={styles.texteTotaux}>Déjà dépensé</Text>
-                <Text style={styles.texteNbTotaux}>
-                  {totalDepenseReelle >= 1000000
-                    ? `${(totalDepenseReelle / 1000000).toFixed(2)}M`
-                    : totalDepenseReelle.toFixed(0)}
-                  €
-                </Text>
+          </View>
+        ) : (
+          //  ********************** PAGE DEPENSES REELLES **********************
+          <View style={{ flex: 1 }}>
+            <ImageBackground source={headerImage} style={styles.divHeader}>
+              <View style={styles.head}>
+                <View style={styles.divRevenu}>
+                  <Text style={{ color: colors.textSecondary }}>
+                    Vos prévisions
+                  </Text>
+                  <Text style={styles.texteRevenu}>{totalDepense}€</Text>
+                </View>
               </View>
-              <View style={styles.divNombre}>
-                <Text style={styles.texteTotaux}>Reste à dépenser </Text>
-                <Text
-                  style={[
-                    styles.texteNbTotaux,
-                    {
-                      color:
-                        totalDepense - totalDepenseReelle < 0
-                          ? colors.depense
-                          : styles.texteNbTotaux.color,
-                    },
-                  ]}
-                >
-                  {totalDepense - totalDepenseReelle >= 1000000
-                    ? `${((totalDepense - totalDepenseReelle) / 1000000).toFixed(2)}M`
-                    : (totalDepense - totalDepenseReelle).toFixed(0)}
-                  €
-                </Text>
+              <View style={styles.totaux}>
+                <View style={styles.divNombre}>
+                  <Text style={styles.texteTotaux}>Déjà dépensé</Text>
+                  <Text style={styles.texteNbTotaux}>
+                    {totalDepenseReelle >= 1000000
+                      ? `${(totalDepenseReelle / 1000000).toFixed(2)}M`
+                      : totalDepenseReelle.toFixed(2)}
+                    €
+                  </Text>
+                </View>
+                <View style={styles.divNombre}>
+                  <Text style={styles.texteTotaux}>Reste à dépenser </Text>
+                  <Text
+                    style={[
+                      styles.texteNbTotaux,
+                      {
+                        color:
+                          totalDepense - totalDepenseReelle < 0
+                            ? colors.depense
+                            : styles.texteNbTotaux.color,
+                      },
+                    ]}
+                  >
+                    {totalDepense - totalDepenseReelle >= 1000000
+                      ? `${((totalDepense - totalDepenseReelle) / 1000000).toFixed(2)}M`
+                      : (totalDepense - totalDepenseReelle).toFixed(2)}
+                    €
+                  </Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.navigation}>
-              {/* <View style={styles.button}>
+              <View style={styles.navigation}>
+                {/* <View style={styles.button}>
                 <TouchableOpacity onPress={() => toggleHisto()}>
                   <Text style={styles.buttonText}>Historique</Text>
                 </TouchableOpacity>
               </View> */}
-              <View style={styles.button}>
-                <TouchableOpacity onPress={toggleReelle}>
-                  <Text style={styles.buttonText}>Ajouter une dépense</Text>
-                </TouchableOpacity>
-              </View>
-              {/* <View style={styles.button}>
+                <View style={styles.button}>
+                  <TouchableOpacity onPress={toggleReelle}>
+                    <Text style={styles.buttonText}>Ajouter une dépense</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* <View style={styles.button}>
                 <Link style={styles.buttonText} href="/ecoPage">
                   Autre
                 </Link>
               </View> */}
-            </View>
-          </ImageBackground>
-          <View style={styles.cardsContainer}>
-            {depenses.length > 0 ? (
-              <View>
-                {Object.entries(totauxParTypePrev).map(([key, value]) => (
-                  <View key={key} style={styles.card}>
-                    <TouchableOpacity
-                      style={styles.contentCard}
-                      onPress={() => {
-                        setSelectedKey(key);
-                        toggleDetails(key);
-                      }}
-                    >
-                      <Text style={styles.cardTxtType}>{key}</Text>
-
-                      <View
-                        style={[
-                          styles.headerCard,
-                          { justifyContent: 'flex-start' },
-                        ]}
+              </View>
+            </ImageBackground>
+            <View style={styles.cardsContainer}>
+              {depenses.length > 0 ? (
+                <ScrollView
+                  style={styles.flatList}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {Object.entries(totauxParTypePrev).map(([key, value]) => (
+                    <View key={key} style={styles.card}>
+                      <TouchableOpacity
+                        style={styles.contentCard}
+                        onPress={() => {
+                          setSelectedKey(key);
+                          toggleDetails(key);
+                        }}
                       >
-                        <Text style={styles.cardTxt}>
-                          {!totauxParType[key] ? 0 : totauxParType[key]}€
-                        </Text>
-                        <View style={styles.progressBarView}>
-                          <Progress.Bar
-                            progress={
-                              !totauxParType[key]
-                                ? 0
-                                : (totauxParType[key] * 100) /
-                                  totauxParTypePrev[key] /
-                                  100
-                            }
-                            width={200}
-                            height={10}
-                          />
-                        </View>
-                        <Text style={styles.cardTxt}>
-                          {totauxParTypePrev[key]}€
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                        <Text style={styles.cardTxtType}>{key}</Text>
 
-                    {/* ******************* MODALE DETAILS ***************** */}
-                    <View>
-                      <Modal
-                        visible={modalDetails}
-                        transparent={true}
-                        animationType="slide"
-                      >
-                        <View style={[styles.cardsContainer, { flex: 1 }]}>
-                          <Text style={styles.cardTxtType}>
-                            {' '}
-                            {selectedKey}{' '}
+                        <View
+                          style={[
+                            styles.headerCard,
+                            { justifyContent: 'flex-start' },
+                          ]}
+                        >
+                          <Text style={styles.cardTxt}>
+                            {!totauxParType[key] ? 0 : totauxParType[key]}€
                           </Text>
-                          {depensesReelles
-                            .filter((depR) => depR.typeDepense === selectedKey)
-                            .map((depR) => (
-                              <View style={styles.card} key={depR.id}>
-                                <TouchableOpacity
-                                  onPress={() => handleDelete2(depR.id)}
-                                  style={styles.deleteButton}
-                                >
-                                  <Text style={styles.X}>X</Text>
-                                </TouchableOpacity>
-
-                                <View style={styles.contentCard}>
-                                  <View style={styles.headerCard}>
-                                    <Text style={styles.cardTxt}>
-                                      {depR.titre}
-                                    </Text>
-
-                                    <Text style={styles.cardTxt}>
-                                      {depR.montant}€
-                                    </Text>
-                                    <Text style={styles.cardTxt}>
-                                      {new Date(depR.id).toLocaleString(
-                                        'fr-FR',
-                                        {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          year: 'numeric',
-                                        }
-                                      )}
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
-                            ))}
+                          <View style={styles.progressBarView}>
+                            <Progress.Bar
+                              progress={
+                                !totauxParType[key]
+                                  ? 0
+                                  : (totauxParType[key] * 100) /
+                                    totauxParTypePrev[key] /
+                                    100
+                              }
+                              width={screenWidth * 0.48}
+                              height={10}
+                              color={
+                                totauxParType[key] / totauxParTypePrev[key] >= 1
+                                  ? 'red' // Rouge à 100 %
+                                  : totauxParType[key] /
+                                        totauxParTypePrev[key] >
+                                      0.8
+                                    ? 'orange' // Orange proche de 100 %
+                                    : 'rgb(22, 185, 214)' // Autres cas
+                              }
+                            />
+                          </View>
+                          <Text style={styles.cardTxt}>
+                            {totauxParTypePrev[key]}€
+                          </Text>
                         </View>
+                      </TouchableOpacity>
 
-                        <Button
-                          color={colors.depense}
-                          title="Annuler"
-                          onPress={() => setModalDetails(!modalDetails)}
-                        />
-                      </Modal>
+                      {/* ******************* MODALE DETAILS ***************** */}
+                      <View>
+                        <Modal
+                          visible={modalDetails}
+                          transparent={true}
+                          animationType="none"
+                        >
+                          <View
+                            style={[
+                              styles.cardsContainer,
+                              {
+                                marginVertical: 150,
+                                marginHorizontal: 30,
+                                borderWidth: 3,
+                                borderColor: 'orange',
+                                borderRadius: 10,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.cardTxtType,
+                                {
+                                  marginLeft: 10,
+                                  paddingVertical: 10,
+                                  paddingHorizontal: 20,
+                                  borderRadius: 20,
+                                },
+                              ]}
+                            >
+                              {selectedKey}
+                            </Text>
+                            <ScrollView>
+                              {depensesReelles
+                                .filter(
+                                  (depR) => depR.typeDepense === selectedKey
+                                )
+                                .map((depR) => (
+                                  <View
+                                    style={[styles.card, { height: 70 }]}
+                                    key={depR.id}
+                                  >
+                                    <TouchableOpacity
+                                      onPress={() => handleDelete2(depR.id)}
+                                      style={styles.deleteButton}
+                                    >
+                                      <Text style={styles.X}>X</Text>
+                                    </TouchableOpacity>
+
+                                    <View
+                                      style={[
+                                        styles.contentCard,
+                                        { justifyContent: 'center' },
+                                      ]}
+                                    >
+                                      <View style={styles.headerCard}>
+                                        <Text
+                                          style={[
+                                            styles.cardTxt,
+                                            {
+                                              width: '40%',
+                                              overflow: 'hidden',
+                                            },
+                                          ]}
+                                          numberOfLines={1}
+                                        >
+                                          {depR.titre}
+                                        </Text>
+
+                                        <Text style={styles.cardTxt}>
+                                          {depR.montant}€
+                                        </Text>
+                                        <Text style={styles.cardTxt}>
+                                          {new Date(depR.id).toLocaleString(
+                                            'fr-FR',
+                                            {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                            }
+                                          )}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                ))}
+                            </ScrollView>
+                            <Button
+                              color={colors.depense}
+                              title="Annuler"
+                              onPress={() => setModalDetails(!modalDetails)}
+                            />
+                          </View>
+                        </Modal>
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View>
-                <Text style={{ textAlign: 'center' }}>
-                  Aucune dépense renseignée
-                </Text>
-              </View>
-            )}
+                  ))}
+                </ScrollView>
+              ) : (
+                <View>
+                  <Text style={{ textAlign: 'center' }}>
+                    Aucune dépense renseignée
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
+        )}
+
+        <View>
+          {showGraph ? (
+            <View>
+              <Modal>
+                <Onglet depenses={depenses} totalDepense={totalDepense} />
+                <Button
+                  color={colors.buttonPrimary}
+                  title="Fermer"
+                  onPress={() => setShowGraph(!showGraph)}
+                />
+              </Modal>
+            </View>
+          ) : null}
         </View>
-      )}
+        <View style={styles.divModalPlusContenair}>
+          <Modal
+            visible={isModalVisible}
+            transparent={true}
+            animationType="slide"
+          >
+            <View style={styles.modal}>
+              <Text style={styles.titleModal}>Nouvelle prévision</Text>
+              <TextInput
+                placeholder="Titre"
+                value={titre}
+                onChangeText={(text) => setTitre(text)}
+                style={styles.inputModal}
+              />
+              <TextInput
+                placeholder="Montant"
+                keyboardType="numeric"
+                value={montant}
+                onChangeText={(text) => setMontant(text)}
+                style={styles.inputModal}
+              />
 
-      <View>
-        {showGraph ? (
-          <View>
-            <Modal>
-              <Onglet depenses={depenses} totalDepense={totalDepense} />
-              <Button
-                color={colors.buttonPrimary}
-                title="Fermer"
-                onPress={() => setShowGraph(!showGraph)}
-              />
-            </Modal>
-          </View>
-        ) : null}
-      </View>
-      <View style={styles.divModalPlusContenair}>
-        <Modal
-          visible={isModalVisible}
-          transparent={true}
-          animationType="slide"
-        >
-          <View style={styles.modal}>
-            <Text style={styles.titleModal}>Nouvelle prévision</Text>
-            <TextInput
-              placeholder="Titre"
-              value={titre}
-              onChangeText={(text) => setTitre(text)}
-              style={styles.inputModal}
-            />
-            <TextInput
-              placeholder="Montant"
-              keyboardType="numeric"
-              value={montant}
-              onChangeText={(text) => setMontant(text)}
-              style={styles.inputModal}
-            />
-
-            <Text>Type de dépense</Text>
-            <Picker
-              selectedValue={typeDepense}
-              onValueChange={(itemValue) => setTypeDepense(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Sélectionner..." value="" />
-              <Picker.Item label="Loyer" value="Loyer" />
-              <Picker.Item label="Alimentation" value="Alimentation" />
-              <Picker.Item label="Transport" value="Transport" />
-              <Picker.Item label="Loisirs" value="Loisirs" />
-              <Picker.Item label="Santé" value="Sante" />
-              <Picker.Item label="Éducation" value="Education" />
-              <Picker.Item label="Famille" value="Famille" />
-              <Picker.Item label="Animaux" value="Animaux" />
-              <Picker.Item label="Investissements" value="Investissements" />
-              <Picker.Item label="Voyages" value="Voyages" />
-              <Picker.Item label="Vétements" value="Vetements" />
-              <Picker.Item label="Impôts" value="Impots" />
-              <Picker.Item label="Services" value="Services" />
-              <Picker.Item label="Dons" value="Dons" />
-              <Picker.Item label="Epargne" value="Epargne" />
-              <Picker.Item label="Culture" value="Culture" />
-              <Picker.Item label="Communication" value="Communication" />
-              <Picker.Item label="Autre" value="Autre" />
-            </Picker>
-            <View style={styles.divButtonModal}>
-              <Button
-                color={colors.buttonPrimary}
-                title="Ajouter"
-                onPress={ajouterDepense}
-              />
-              <Button
-                color={colors.depense}
-                title="Annuler"
-                onPress={() => setModalVisible(!isModalVisible)}
-              />
+              <Text>Type de dépense</Text>
+              <Picker
+                selectedValue={typeDepense}
+                onValueChange={(itemValue) => setTypeDepense(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Sélectionner..." value="" />
+                <Picker.Item label="Loyer" value="Loyer" />
+                <Picker.Item label="Alimentation" value="Alimentation" />
+                <Picker.Item label="Transport" value="Transport" />
+                <Picker.Item label="Loisirs" value="Loisirs" />
+                <Picker.Item label="Santé" value="Sante" />
+                <Picker.Item label="Éducation" value="Education" />
+                <Picker.Item label="Famille" value="Famille" />
+                <Picker.Item label="Animaux" value="Animaux" />
+                <Picker.Item label="Investissements" value="Investissements" />
+                <Picker.Item label="Voyages" value="Voyages" />
+                <Picker.Item label="Vétements" value="Vetements" />
+                <Picker.Item label="Impôts" value="Impots" />
+                <Picker.Item label="Services" value="Services" />
+                <Picker.Item label="Dons" value="Dons" />
+                <Picker.Item label="Epargne" value="Epargne" />
+                <Picker.Item label="Culture" value="Culture" />
+                <Picker.Item label="Communication" value="Communication" />
+                <Picker.Item label="Autre" value="Autre" />
+              </Picker>
+              <View style={styles.divButtonModal}>
+                <Button
+                  color={colors.buttonPrimary}
+                  title="Ajouter"
+                  onPress={ajouterDepense}
+                />
+                <Button
+                  color={colors.depense}
+                  title="Annuler"
+                  onPress={() => setModalVisible(!isModalVisible)}
+                />
+              </View>
             </View>
-          </View>
-        </Modal>
-      </View>
+          </Modal>
+        </View>
 
-      {/* DEPENSES REELLES */}
+        {/* DEPENSES REELLES */}
 
-      <View style={styles.divModalPlusContenair}>
-        <Modal
-          visible={modalDepReelle}
-          transparent={true}
-          animationType="slide"
-        >
-          <View style={styles.modal}>
-            <Text style={styles.titleModal}>Nouvelle dépense</Text>
-            <TextInput
-              placeholder="Titre"
-              value={titre}
-              onChangeText={(text) => setTitre(text)}
-              style={styles.inputModal}
-            />
-            <TextInput
-              placeholder="Montant"
-              keyboardType="numeric"
-              value={montant}
-              onChangeText={(text) => setMontant(text)}
-              style={styles.inputModal}
-            />
-
-            <Text>Type de dépense</Text>
-            <Picker
-              selectedValue={typeDepense}
-              onValueChange={(itemValue) => setTypeDepense(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Sélectionner..." value="" />
-              <Picker.Item label="Loyer" value="Loyer" />
-              <Picker.Item label="Alimentation" value="Alimentation" />
-              <Picker.Item label="Transport" value="Transport" />
-              <Picker.Item label="Loisirs" value="Loisirs" />
-              <Picker.Item label="Santé" value="Sante" />
-              <Picker.Item label="Éducation" value="Education" />
-              <Picker.Item label="Famille" value="Famille" />
-              <Picker.Item label="Animaux" value="Animaux" />
-              <Picker.Item label="Investissements" value="Investissements" />
-              <Picker.Item label="Voyages" value="Voyages" />
-              <Picker.Item label="Vétements" value="Vetements" />
-              <Picker.Item label="Impôts" value="Impots" />
-              <Picker.Item label="Services" value="Services" />
-              <Picker.Item label="Dons" value="Dons" />
-              <Picker.Item label="Epargne" value="Epargne" />
-              <Picker.Item label="Culture" value="Culture" />
-              <Picker.Item label="Communication" value="Communication" />
-              <Picker.Item label="Autre" value="Autre" />
-            </Picker>
-            <View style={styles.divButtonModal}>
-              <Button
-                color={colors.buttonPrimary}
-                title="Ajouter"
-                onPress={ajouterDepenseReelle}
+        <View style={styles.divModalPlusContenair}>
+          <Modal
+            visible={modalDepReelle}
+            transparent={true}
+            animationType="slide"
+          >
+            <View style={styles.modal}>
+              <Text style={styles.titleModal}>Nouvelle dépense</Text>
+              <TextInput
+                placeholder="Titre"
+                value={titre}
+                onChangeText={(text) => setTitre(text)}
+                style={styles.inputModal}
               />
-              <Button
-                color={colors.depense}
-                title="Annuler"
-                onPress={() => setModalDepReelle(!modalDepReelle)}
+              <TextInput
+                placeholder="Montant"
+                keyboardType="numeric"
+                value={montant}
+                onChangeText={(text) => setMontant(text)}
+                style={styles.inputModal}
               />
+
+              <Text>Type de dépense</Text>
+              <Picker
+                selectedValue={typeDepense}
+                onValueChange={(itemValue) => setTypeDepense(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Sélectionner..." value="" />
+                <Picker.Item label="Loyer" value="Loyer" />
+                <Picker.Item label="Alimentation" value="Alimentation" />
+                <Picker.Item label="Transport" value="Transport" />
+                <Picker.Item label="Loisirs" value="Loisirs" />
+                <Picker.Item label="Santé" value="Sante" />
+                <Picker.Item label="Éducation" value="Education" />
+                <Picker.Item label="Famille" value="Famille" />
+                <Picker.Item label="Animaux" value="Animaux" />
+                <Picker.Item label="Investissements" value="Investissements" />
+                <Picker.Item label="Voyages" value="Voyages" />
+                <Picker.Item label="Vétements" value="Vetements" />
+                <Picker.Item label="Impôts" value="Impots" />
+                <Picker.Item label="Services" value="Services" />
+                <Picker.Item label="Dons" value="Dons" />
+                <Picker.Item label="Epargne" value="Epargne" />
+                <Picker.Item label="Culture" value="Culture" />
+                <Picker.Item label="Communication" value="Communication" />
+                <Picker.Item label="Autre" value="Autre" />
+              </Picker>
+              <View style={styles.divButtonModal}>
+                <Button
+                  color={colors.buttonPrimary}
+                  title="Ajouter"
+                  onPress={ajouterDepenseReelle}
+                />
+                <Button
+                  color={colors.depense}
+                  title="Annuler"
+                  onPress={() => setModalDepReelle(!modalDepReelle)}
+                />
+              </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
+        </View>
+        <View>
+          <Modal visible={modalAlert} transparent={true} animationType="slide">
+            <View style={styles.modalAlert}>
+              <Text style={styles.titleAlert}>ATTENTION !</Text>
+              <Text style={styles.textAlert}>
+                Vous êtes sur le point d'effacer vos dépenses. Voulez vous
+                continuer ?
+              </Text>
+              <View style={styles.btnContAlert}>
+                <TouchableOpacity
+                  style={styles.btnAlert}
+                  onPress={handleDeleteData}
+                >
+                  <Text style={styles.btnTxtAlert}>Continuer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.btnAlert}
+                  onPress={() => setModalAlert(!modalAlert)}
+                >
+                  <Text style={styles.btnTxtAlert}>Retour</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </View>
       </View>
     </View>
   );
 }
 
 const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  secondPage: {
-    backgroundColor: colors.background,
-    flex: 1,
+  modalAlert: {
+    backgroundColor: 'white', // Arrière-plan blanc pour mieux contraster
+    marginHorizontal: 20,
+    marginTop: '30%', // Pour centrer la modal verticalement
+    padding: 20,
+    borderRadius: 10, // Ajoute des bords arrondis
+    elevation: 10, // Pour une ombre portée
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'red',
   },
+  titleAlert: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'red', // Titre en rouge pour attirer l'attention
+    marginBottom: 10, // Un peu d'espace sous le titre
+  },
+  textAlert: {
+    fontSize: 16,
+    marginBottom: 20, // Un peu d'espace sous le texte
+    color: '#333', // Couleur de texte un peu plus douce
+  },
+  btnContAlert: {
+    flexDirection: 'row',
+    gap: 30,
+  },
+  btnAlert: {
+    backgroundColor: 'red',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnTxtAlert: {
+    color: 'white',
+    fontSize: 16,
+  },
+  secondPage: {
+    flex: 1, // Remplit tout l'écran
+    width: '100%', // Limite horizontale
+    height: '100%', // Limite verticale
+    resizeMode: 'cover', // Pour ajuster l'image à l'écran
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: '15%',
+    overflow: 'hidden',
+    borderRadius: 15,
+  },
+
   progressBarView: {
     height: 5,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    // width: '70%',
+    // gap: 10,
   },
   texte: {
     fontSize: 22,
@@ -741,8 +886,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   homePage: {
-    marginTop: 0,
+    marginTop: '15%',
     flex: 1,
+    maxHeight: '100%',
+    backgroundColor: colors.bgfoot,
+    overflow: 'hidden',
+    borderRadius: 15,
   },
   divHeader: {
     borderColor: colors.buttonPrimary,
@@ -780,7 +929,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: 'bold',
     borderRadius: 8,
-    fontSize: 40,
+    fontSize: 30,
   },
   divNombre: {
     justifyContent: 'center',
@@ -795,6 +944,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 5,
     paddingTop: 5,
+
     // backgroundColor: colors.bgfoot,
   },
   button: {
@@ -815,17 +965,15 @@ const styles = StyleSheet.create({
   },
   card: {
     position: 'relative',
-    width: screenWidth - 20,
-    height: 'auto',
     marginHorizontal: 10,
     marginTop: 10,
     backgroundColor: colors.buttonPrimary,
-    borderRadius: 0,
-    paddingTop: 8,
-    paddingBottom: 15,
-    paddingLeft: 15,
+    height: 90,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     elevation: 3,
   },
+
   cardTxt: {
     color: colors.textPrimary,
     fontSize: 18,
@@ -864,20 +1012,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 20,
+    gap: 10,
     paddingRight: 50,
   },
   contentCard: {
     gap: 5,
     justifyContent: 'center',
+    paddingTop: 6,
   },
   divModalPlusContenair: {
     flex: 1,
   },
   cardsContainer: {
-    paddingVertical: 20,
+    height: screenHeight / 2,
+    paddingVertical: 10,
     backgroundColor: colors.bgfoot,
-    zIndex: 10,
+    zIndex: 0,
+    paddingBottom: 10,
+  },
+  flatList: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
   },
   buttonGeneric: {
     backgroundColor: colors.buttonPrimary,
@@ -957,7 +1114,8 @@ const styles = StyleSheet.create({
   },
   modal: {
     marginHorizontal: 15,
-    marginVertical: 250,
+    marginBottom: 220,
+    marginTop: '5%',
     padding: 20,
     borderWidth: 5,
     borderColor: 'orange',
@@ -983,5 +1141,9 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     marginTop: 8,
     marginBottom: 10,
+  },
+  bgFond: {
+    flex: 1,
+    backgroundColor: 'black',
   },
 });
